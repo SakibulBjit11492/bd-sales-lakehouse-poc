@@ -1,0 +1,22 @@
+# Python
+.venv/
+__pycache__/
+.pytest_cache/
+.ruff_cache/
+
+# Secrets
+.env
+
+# Generated data and local state
+data/
+out/
+sample_100k/
+watermarks.json
+*.csv
+*.parquet
+
+# Databricks bundle state
+.databricks/
+
+# macOS
+.DS_Store
