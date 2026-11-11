@@ -10,9 +10,13 @@ import datetime as dt
 import json
 import os
 import subprocess
+import warnings
 
 import pandas as pd
 import pyodbc
+
+# pandas warns when given a plain pyodbc connection; it works fine, so hide the noise
+warnings.filterwarnings("ignore", message="pandas only supports SQLAlchemy")
 
 SQL_PWD = os.environ["SQL_SA_PASSWORD"]
 CONN = ("DRIVER={ODBC Driver 18 for SQL Server};SERVER=localhost,1433;DATABASE=SalesDW_BD;"
@@ -26,8 +30,18 @@ TABLES = {  # table: watermark column (None = full load every run)
 WM_FILE = "watermarks.json"
 
 
+_created_folders = set()
+
+
 def upload(local, folder):
-    subprocess.run(["databricks", "fs", "cp", local, f"{VOLUME}/{folder}/"], check=True)
+    # Create the target folder once per run (does nothing if it already exists)
+    target_dir = f"{VOLUME}/{folder}"
+    if folder not in _created_folders:
+        subprocess.run(["databricks", "fs", "mkdir", target_dir], check=True)
+        _created_folders.add(folder)
+    # Full destination file path, so the CLI never treats the folder name as a file
+    dest = f"{target_dir}/{os.path.basename(local)}"
+    subprocess.run(["databricks", "fs", "cp", local, dest], check=True)
 
 
 def main():
