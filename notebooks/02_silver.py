@@ -14,11 +14,20 @@ KEYS = {
     "dimpromotion": ["PromotionKey"],
 }
 
+# SQL Server MONEY -> exact DECIMAL(19,4) (pandas turned them into floating-point doubles)
+MONEY_COLS = {
+    "factinternetsales": ["UnitPrice", "ExtendedAmount", "DiscountAmount", "ProductStandardCost",
+                          "TotalProductCost", "SalesAmount", "TaxAmt", "DeliveryCharge"],
+    "dimproduct": ["StandardCost", "ListPrice"],
+}
+
 for t, keys in KEYS.items():
     src = spark.table(f"sales.bronze.{t}").drop("_source_file")
     newest_first = Window.partitionBy(*keys).orderBy(F.col("_ingested_at").desc())
     src = (src.withColumn("_rn", F.row_number().over(newest_first))
               .filter("_rn = 1").drop("_rn"))
+    for c in MONEY_COLS.get(t, []):
+        src = src.withColumn(c, F.col(c).cast("decimal(19,4)"))
 
     target = f"sales.silver.{t}"
     if not spark.catalog.tableExists(target):

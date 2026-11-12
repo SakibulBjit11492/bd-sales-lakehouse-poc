@@ -19,10 +19,12 @@ for t, expected in src["counts"].items():
     actual = spark.table(f"sales.silver.{t.lower()}").count()
     results.append((run, f"{t} row count", float(expected), float(actual), expected == actual))
 
-# Sales total: SQL Server vs Gold
-gold = float(spark.sql("SELECT SUM(SalesAmount) FROM sales.gold.fact_sales").first()[0])
-results.append((run, "Total SalesAmount", src["fact_sales_amount"], gold,
-                abs(gold - src["fact_sales_amount"]) < 0.01))
+# Sales total: SQL Server vs Gold (exact decimal comparison)
+from decimal import Decimal
+gold = spark.sql("SELECT SUM(SalesAmount) FROM sales.gold.fact_sales").first()[0]
+expected = Decimal(str(src["fact_sales_amount"]))
+results.append((run, "Total SalesAmount", float(expected), float(gold),
+                abs(gold - expected) < Decimal("0.01")))
 
 # Orphans: facts with no matching customer
 orphans = spark.sql("""SELECT COUNT(*) FROM sales.silver.factinternetsales f
